@@ -1,31 +1,43 @@
-import React, { memo, useMemo, useTransition } from 'react'
+import React, { memo, startTransition } from 'react'
 
 import { Select, Text } from '@chakra-ui/react'
 
-import { Controller, useFormContext, useWatch } from '@redwoodjs/forms'
+import { Controller, useFormContext } from '@redwoodjs/forms'
 import { useSuspenseQuery } from '@redwoodjs/web/dist/components/GraphQLHooksProvider'
 
 import useToday from 'src/hooks/useToday'
-import { formatDuration } from 'src/lib/formatters'
 
-import { useNewRecordContext } from '../NewRecord'
+import TaskDuration from './components/TaskDuration'
 
-export const GET_TASK = gql`
-  query task($id: Int!, $date: DateTime) {
-    task(id: $id, date: $date) {
-      id
-      title
-      color
-      ...DurationField
+const TaskSelectFieldFragment_task = gql`
+  fragment TaskSelectFieldFragment on Task {
+    id
+    title
+    ...TaskDurationFragment
+  }
+  ${TaskDuration.fragment.task}
+`
+
+const GET_TASKS = gql`
+  query tasks_taskSelectField($date: DateTime) {
+    tasks(date: $date) {
+      ...TaskSelectFieldFragment
     }
   }
+
+  ${TaskSelectFieldFragment_task}
 `
 
 const TaskSelectField = () => {
-  const { tasks } = useNewRecordContext()
+  const { today } = useToday()
+  const {
+    data: { tasks },
+  } = useSuspenseQuery(GET_TASKS, {
+    variables: { date: today.toISOString() },
+  })
   const { control, watch } = useFormContext()
   const taskId = watch('taskId')
-  const [isPending, startTransition] = useTransition()
+  // const [isPending, startTransition] = useTransition()
 
   return (
     <div className="flex flex-col items-center gap-2">
@@ -36,7 +48,7 @@ const TaskSelectField = () => {
         render={({ field }) => (
           <Select
             {...field}
-            isDisabled={isPending}
+            // isDisabled={isPending}
             placeholder="할 일 선택하기"
             onChange={(e) =>
               startTransition(() =>
@@ -63,27 +75,8 @@ const TaskSelectField = () => {
   )
 }
 
-const TaskDuration = ({ taskId }: { taskId: number }) => {
-  const { today } = useToday()
-  const {
-    data: { task },
-  } = useSuspenseQuery(GET_TASK, {
-    variables: {
-      id: taskId,
-      date: today.toISOString(),
-    },
-  })
-
-  const { hours, minutes, seconds } = useMemo(
-    () => formatDuration(task.duration),
-    [task]
-  )
-
-  return (
-    <Text fontSize="sm" color="gray.500">
-      {`${hours}:${minutes}:${seconds}`}
-    </Text>
-  )
+TaskSelectField.fragment = {
+  task: TaskSelectFieldFragment_task,
 }
 
-export default memo(TaskSelectField)
+export default TaskSelectField

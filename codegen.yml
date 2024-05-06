@@ -1,0 +1,3 @@
+schema:
+  - .redwood/schemal.graphql
+  - client-schema.graphql

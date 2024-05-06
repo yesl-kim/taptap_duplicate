@@ -53,7 +53,7 @@ const isPlaned =
   (date = new Date()) =>
   (task: TaskData): boolean => {
     const startDate = new Date(task.startDate)
-    console.log('tasks 조회', task.title, startDate, date)
+    // console.log('tasks 조회', task.title, startDate, date)
     if (!task.repeat) {
       return isSameDay(startDate, date)
     }
@@ -93,7 +93,7 @@ const isPlaned =
     return true
   }
 
-export const tasks: QueryResolvers['tasks'] = async ({ date }) => {
+export const tasks: QueryResolvers['tasks'] = async ({ date, limit }) => {
   const data = await db.task.findMany({
     where: {
       category: {
@@ -102,7 +102,8 @@ export const tasks: QueryResolvers['tasks'] = async ({ date }) => {
     },
     include: { repeat: true },
   })
-  return data.filter(isPlaned(new Date(date)))
+  const plannedTasks = data.filter(isPlaned(new Date(date)))
+  return limit ? plannedTasks.splice(0, limit) : plannedTasks
 }
 
 export const task: QueryResolvers['task'] = ({ id }) => {
@@ -140,7 +141,10 @@ export const Task: TaskRelationResolvers = {
     return db.task.findUnique({ where: { id: root?.id } }).repeat()
   },
   records: (_obj, { root, info }) => {
-    return records({ taskId: root.id, date: info.variableValues.date })
+    return records({
+      taskId: root.id,
+      date: info.variableValues.date as string | Date,
+    })
   },
   category: (_obj, { root }) => {
     return db.task.findUnique({ where: { id: root?.id } }).category()

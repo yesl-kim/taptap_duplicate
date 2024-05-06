@@ -6,9 +6,9 @@ import { PlusIcon, TagIcon, DocumentIcon } from '@heroicons/react/24/outline'
 import { Link } from '@redwoodjs/router'
 import { MetaTags } from '@redwoodjs/web'
 
-import NewRecord from 'src/components/NewRecord/NewRecord'
 import NewTaskModal from 'src/components/NewTaskModal/NewTaskModal'
-import TodayDuration from 'src/components/TodayDuration/TodayDuration'
+import NewRecord from 'src/components/Record/NewRecord/NewRecord'
+import TodayDuration from 'src/components/Record/TodayDuration/TodayDuration'
 
 const HomePage = () => {
   const [isOpen, { toggle }] = useBoolean()
@@ -40,7 +40,9 @@ const HomePage = () => {
                   <div className="flex h-full flex-col justify-evenly">
                     <div className="flex h-[350px] w-[350px] flex-col items-center justify-center gap-5 rounded-full border border-teal-600/70 bg-white pt-4 shadow-2xl shadow-teal-500/50">
                       <TodayDuration />
-                      <NewRecord.TaskSelectField />
+                      <Suspense fallback={<p>loading....</p>}>
+                        <NewRecord.TaskSelectField />
+                      </Suspense>
                     </div>
                     <div className="mx-auto">
                       <NewRecord.TimerButton />

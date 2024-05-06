@@ -6,8 +6,8 @@ import { DateField, FormProvider, useForm } from '@redwoodjs/forms'
 import { MetaTags } from '@redwoodjs/web'
 
 // import TimeTableHeader from 'src/components/TimeTable/components/TimeTableHeader'
+import TimeTable from 'src/components/Record/TimeTable/TimeTable'
 import TaskList from 'src/components/TaskList/TaskList'
-import TimeTable from 'src/components/TimeTable/TimeTable'
 import useToday from 'src/hooks/useToday'
 
 /**

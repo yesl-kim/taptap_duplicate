@@ -9,16 +9,6 @@ export const schema = gql`
     task: Task!
   }
 
-  type Duration {
-    years: Int
-    months: Int
-    weeks: Int
-    days: Int
-    hours: Int
-    minutes: Int
-    seconds: Int
-  }
-
   type Query {
     records(date: DateTime, taskId: Int): [Record!]! @requireAuth
   }

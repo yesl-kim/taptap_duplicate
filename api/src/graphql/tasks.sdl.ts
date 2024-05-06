@@ -14,7 +14,7 @@ export const schema = gql`
   }
 
   type Query {
-    tasks(date: DateTime): [Task!]! @requireAuth
+    tasks(date: DateTime, limit: Int): [Task!]! @requireAuth
     task(id: Int!, date: DateTime): Task @requireAuth
   }
 

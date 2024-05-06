@@ -4,32 +4,20 @@ import { differenceInMilliseconds, getTime } from 'date-fns'
 import { tasks } from 'types/graphql'
 
 import { FormProvider, SubmitHandler, useForm } from '@redwoodjs/forms'
-import { useMutation } from '@redwoodjs/web/dist/components/GraphQLHooksProvider'
+import {
+  useMutation,
+  useSuspenseQuery,
+} from '@redwoodjs/web/dist/components/GraphQLHooksProvider'
 import { toast } from '@redwoodjs/web/dist/toast'
 
-import { GET_RECORDS } from 'src/hooks/useRecords'
-import useTasks from 'src/hooks/useTasks'
 import useToday from 'src/hooks/useToday'
 
-import TaskSelectField, { GET_TASK } from './components/TaskSelectField'
+import { CREATE_RECORD } from '../mutations'
+import { GET_RECORDS } from '../TodayDuration/TodayDuration'
+
+import TaskSelectField from './components/TaskSelectField'
 import Timer from './components/Timer'
 import TimerButton from './components/TimerButton'
-
-const CREATE_RECORD = gql`
-  mutation createRecord($input: CreateRecordInput!) {
-    createRecord(input: $input) {
-      id
-      start
-      end
-      taskId
-      task {
-        id
-        title
-        color
-      }
-    }
-  }
-`
 
 interface NewRecordForm {
   taskId
@@ -53,37 +41,72 @@ interface Context {
 
 const NewRecordContext = createContext<null | Context>(null)
 
+const GET_FIRST_TASK = gql`
+  query tasks_newRecord($date: DateTime) {
+    tasks(date: $date) {
+      id
+    }
+  }
+`
+
 const NewRecord = ({ children }: Props) => {
   const { today } = useToday()
   const {
     data: { tasks },
-  } = useTasks({ date: today })
+  } = useSuspenseQuery(GET_FIRST_TASK, {
+    variables: { date: today.toISOString(), limit: 1 },
+  })
 
   const [createRecord] = useMutation(CREATE_RECORD, {
     onCompleted: () => toast.success('기록이 저장되었습니다'),
-    onError: (error) => console.log('error: ', error),
+    onError: () => toast.error('잠시 후 다시 시도해주세요.'),
     update: (cache, { data: { createRecord: newRecord } }) => {
-      console.log('new record: ', newRecord)
+      // console.log('new record: ', newRecord)
+      // const res = cache.modify({
+      //   fields: {
+      //     records(existingRecords = []) {
+      //       console.log('prev records: ', existingRecords)
+      //       const newRecordRef = cache.writeFragment({
+      //         data: newRecord,
+      //         fragment: gql`
+      //           fragment NewRecord on Record {
+      //             id
+      //             start
+      //             end
+      //             taskId
+      //           }
+      //         `,
+      //       })
+      //       console.log('new record ref: ', newRecordRef)
+      //       return [...existingRecords, newRecordRef]
+      //     },
+      //   },
+      // })
       cache.updateQuery(
         {
           query: GET_RECORDS,
           variables: { date: today.toISOString() },
         },
-        (data) => ({
-          records: data ? data.records.concat(newRecord) : [newRecord],
-        })
+        (data) => {
+          // console.log('records cache: ', data)
+          return {
+            records: data ? data.records.concat(newRecord) : [newRecord],
+          }
+        }
       )
-      cache.updateQuery(
+      cache.updateFragment(
         {
-          query: GET_TASK,
-          variables: {
-            id: newRecord.taskId,
-            date: today.toISOString(),
-          },
+          fragment: TaskSelectField.fragment.task,
+          fragmentName: 'TaskSelectFieldFragment',
+          id: cache.identify({ __typename: 'Task', id: newRecord.taskId }),
         },
-        (data) => ({
-          task: { ...data.task, records: data.task.records.concat(newRecord) },
-        })
+        (task) => {
+          // console.log('data: ', task)
+          return {
+            ...task,
+            records: task.records.concat(newRecord),
+          }
+        }
       )
     },
   })
@@ -91,7 +114,12 @@ const NewRecord = ({ children }: Props) => {
   const method = useForm<NewRecordForm>({
     defaultValues: { taskId: tasks[0]?.id },
   })
-  const { handleSubmit, reset, watch } = method
+  const {
+    handleSubmit,
+    reset,
+    watch,
+    formState: { isSubmitting },
+  } = method
   const { start } = watch()
 
   const isUnderMinTime = useCallback(({ start, end }: NewRecordForm) => {
@@ -107,6 +135,7 @@ const NewRecord = ({ children }: Props) => {
       //   toast('1분 미만의 기록은 저장되지 않습니다.')
       //   return
       // }
+      // console.log('input: ', input)
 
       await createRecord({
         variables: { input },
@@ -115,6 +144,11 @@ const NewRecord = ({ children }: Props) => {
             __typename: 'Record',
             id: getTime(new Date()),
             ...input,
+            task: {
+              id: input.taskId,
+              title: '',
+              color: '',
+            },
           },
         },
       })
@@ -123,15 +157,13 @@ const NewRecord = ({ children }: Props) => {
   )
 
   return (
-    <NewRecordContext.Provider value={{ tasks }}>
-      <FormProvider {...method}>
-        <form onSubmit={handleSubmit(onSubmit)}>
-          {typeof children === 'function'
-            ? children({ isRecording: start })
-            : children}
-        </form>
-      </FormProvider>
-    </NewRecordContext.Provider>
+    <FormProvider {...method}>
+      <form onSubmit={handleSubmit(onSubmit)}>
+        {typeof children === 'function'
+          ? children({ isRecording: start })
+          : children}
+      </form>
+    </FormProvider>
   )
 }
 

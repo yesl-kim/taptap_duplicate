@@ -35,6 +35,7 @@ const TimerButton = () => {
           variant="outline"
           size="sm"
           isLoading={isSubmitting}
+          isDisabled={isSubmitting}
           onClick={() => onChange(new Date())}
         >
           그만할래요

@@ -7,6 +7,8 @@ import type {
 
 import { db } from 'src/lib/db'
 
+import { task } from '../tasks/tasks'
+
 export const records: QueryResolvers['records'] = ({ date, taskId }) => {
   const start = new Date(date),
     end = addHours(new Date(date), 24)
@@ -24,15 +26,12 @@ export const records: QueryResolvers['records'] = ({ date, taskId }) => {
     },
     ...(taskId ? { taskId } : {}),
   }
-  return db.record.findMany({ where, include: { task: true } })
+  return db.record.findMany({ where })
 }
 
 export const createRecord: MutationResolvers['createRecord'] = ({ input }) => {
   return db.record.create({
     data: input,
-    include: {
-      task: true,
-    },
   })
 }
 
@@ -43,9 +42,6 @@ export const updateRecord: MutationResolvers['updateRecord'] = ({
   return db.record.update({
     data: input,
     where: { id },
-    include: {
-      task: true,
-    },
   })
 }
 
@@ -57,6 +53,6 @@ export const deleteRecord: MutationResolvers['deleteRecord'] = ({ id }) => {
 
 export const Record: RecordRelationResolvers = {
   task: (_obj, { root }) => {
-    return root.task
+    return task({ id: root.taskId })
   },
 }

@@ -24,10 +24,11 @@ import {
 } from 'date-fns'
 
 import { useFormContext, useWatch } from '@redwoodjs/forms'
+import { useSuspenseQuery } from '@redwoodjs/web/dist/components/GraphQLHooksProvider'
 
-import useRecords from 'src/hooks/useRecords'
 import useTasks from 'src/hooks/useTasks'
-import { formatDuration } from 'src/lib/formatters'
+
+import { GET_RECORDS } from './TimeTable.queries'
 
 const START_OF_DAY = 4
 const $24HOURS = eachHourOfInterval({
@@ -35,12 +36,16 @@ const $24HOURS = eachHourOfInterval({
   end: addHours(endOfDay(new Date()), START_OF_DAY),
 })
 
+// TODO: record list, task list 분리
 const TimeTable = () => {
   const { control } = useFormContext()
   const selectedDate = useWatch({ control, name: 'date' })
   const {
     data: { records },
-  } = useRecords({ date: selectedDate })
+  } = useSuspenseQuery(GET_RECORDS, {
+    variables: { date: selectedDate },
+    returnPartialData: true,
+  })
 
   const {
     data: { tasks },
